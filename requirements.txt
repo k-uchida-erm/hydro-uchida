@@ -1,0 +1,6 @@
+# requirements.txt  – PINNs 最小セット
+torch          # PyTorch 本体（CPU 版で OK、GPU を使う場合は適宜 +cu12x などに）
+numpy          # 配列演算
+matplotlib     # 結果をグラフ表示する用
+tqdm           # 学習ループの進捗バーを出したいとき
+jupyterlab     # Notebook ベースで試したいとき
