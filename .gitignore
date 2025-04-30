@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+
+# 一般的なエディタ・IDE
+*.log
+*.swp
+*.swo
+*.tmp
+.vscode/
+.idea/
+
+# OSゴミ
+._*
+
+# バックアップファイル
+*~
+*.bak
+*.orig
+
+# Node.js
+node_modules/
+npm-debug.log
+
+# Python（必要なら）
+__pycache__/
+*.py[cod]
+.env
+
+# バイナリ
+*.exe
+*.out
+*.app
+
+# Git
+*.patch
+*.diff
