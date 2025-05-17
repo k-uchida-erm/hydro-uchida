@@ -4,3 +4,4 @@ numpy          # 配列演算
 matplotlib     # 結果をグラフ表示する用
 tqdm           # 学習ループの進捗バーを出したいとき
 jupyterlab     # Notebook ベースで試したいとき
+pytz           # タイムゾーンの処理用
