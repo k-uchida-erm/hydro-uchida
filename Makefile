@@ -17,7 +17,8 @@ run:
 	--workdir /usr/src/app \
 	--name python-ml-uchida python-ml python3 main.py
 
-# イメージを再ビルド
+# イメージをビルド
 rebuild:
+	docker rm -f python-ml-uchida 2>/dev/null || true
 	docker rmi -f python-ml 2>/dev/null || true
 	docker build -t python-ml .

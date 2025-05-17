@@ -3,6 +3,11 @@
 # =============================================================
 import torch, torch.nn as nn, torch.optim as optim
 from datetime import datetime
+import pytz
+
+# 日本時間に変換
+jst = pytz.timezone('Asia/Tokyo')
+current_time_jst = datetime.now(jst).strftime('%Y%m%d_%H%M%S')
 
 # -------- 1️⃣ 物性関数を「とりあえず」の形で置く -----------------
 def theta(phi):         # 含水率 θ(φ)
@@ -125,6 +130,7 @@ try:
     plt.plot(x_plot.cpu().numpy(), phi_plot)
     plt.title('phi(x, t=0.5)')
     plt.xlabel('x'); plt.ylabel('phi')
-    plt.savefig(f"result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+    # ファイル名に日本時間を使用
+    plt.savefig(f"result_{current_time_jst}.png")
 except ImportError:
     print("matplotlib が無いのでグラフはスキップしました。")
