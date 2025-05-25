@@ -6,9 +6,25 @@ EXP?=default
 
 # 新しい実験ディレクトリを作る
 new:
-	mkdir -p $(EXPERIMENTS_DIR)/$(EXP)
+	mkdir -p $(EXPERIMENTS_DIR)/$(EXP)/src
+	mkdir -p $(EXPERIMENTS_DIR)/$(EXP)/data
 	touch $(EXPERIMENTS_DIR)/$(EXP)/main.py
-	@echo "Created: $(EXPERIMENTS_DIR)/$(EXP)/main.py"
+	touch $(EXPERIMENTS_DIR)/$(EXP)/README.md
+	touch $(EXPERIMENTS_DIR)/$(EXP)/src/__init__.py
+	touch $(EXPERIMENTS_DIR)/$(EXP)/src/loader.py
+	touch $(EXPERIMENTS_DIR)/$(EXP)/src/config.py
+	touch $(EXPERIMENTS_DIR)/$(EXP)/src/model.py
+	touch $(EXPERIMENTS_DIR)/$(EXP)/src/train.py
+	@echo "Created experiment structure in $(EXPERIMENTS_DIR)/$(EXP)/"
+	@echo "  - main.py"
+	@echo "  - README.md"
+	@echo "  - src/"
+	@echo "    - __init__.py"
+	@echo "    - loader.py"
+	@echo "    - config.py"
+	@echo "    - model.py"
+	@echo "    - train.py"
+	@echo "  - data/"
 
 # 実験を実行（今のEXPをボリュームとしてマウント）
 run:
