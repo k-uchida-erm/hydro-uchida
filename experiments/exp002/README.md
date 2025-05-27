@@ -9,20 +9,28 @@ experiments/exp002/
 │   ├── config.py          # 設定ファイル
 │   ├── model.py           # モデル定義
 │   ├── loss.py            # 損失関数
+│   ├── loader.py          # データローダー
 │   └── train.py           # 学習ループ
 ├── analysis/              # 分析・可視化スクリプト
 │   ├── __init__.py
 │   ├── check_model.py     # モデル確認
 │   └── visualize.py       # 結果可視化
 ├── data/                  # データファイル
-│   └── observation.csv
+│   ├── bc.csv            # 境界条件
+│   ├── ic.csv            # 初期条件
+│   ├── obs.csv           # 観測データ
+│   ├── soil.csv          # 地盤データ
+│   └── soil_types.csv    # 地盤タイプ定義
 ├── result/               # 結果保存ディレクトリ
 │   └── model_YYYYMMDD_HHMMSS/
-│       ├── model.pt
+│       ├── model.pt      # 学習済みモデル
 │       ├── loss_history.csv
-│       ├── loss_history.png
-│       ├── pred_vs_obs.png
-│       └── head_distribution_t*.png
+│       ├── analysis_results.txt
+│       └── plots/        # 可視化結果
+│           ├── loss_history.png
+│           ├── pred_vs_obs.png
+│           └── head_distribution/
+│               └── head_distribution_t*.png
 ├── main.py              # メインスクリプト
 └── README.md           # ドキュメント
 ```
@@ -65,6 +73,9 @@ make visualize EXP=exp002 ARGS="--model model_20240321_123456"
 
 - `model.pt`: 学習済みモデル
 - `loss_history.csv`: 損失履歴
-- `loss_history.png`: 損失履歴のグラフ
-- `pred_vs_obs.png`: 予測値と観測値の比較
-- `head_distribution_t*.png`: 各時間点での水頭分布 
+- `analysis_results.txt`: モデル分析結果
+- `plots/`: 可視化結果
+  - `loss_history.png`: 損失履歴のグラフ
+  - `pred_vs_obs.png`: 予測値と観測値の比較
+  - `head_distribution/`: 水頭分布の可視化
+    - `head_distribution_t*.png`: 各時間点での水頭分布 
