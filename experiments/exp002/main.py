@@ -1,28 +1,34 @@
 # =============================================================================
 # メインスクリプト
 # =============================================================================
-# このファイルは、PINNを用いた地下水流動シミュレーションのエントリーポイントです。
-# 以下の機能を提供します：
-# 1. 入力データ（土壌パラメータ、境界条件、初期条件、観測データ）の読み込み
-# 2. PINNモデルの初期化と学習の実行
-# 3. 学習済みモデルの保存
+# このスクリプトは、PINNモデルの学習を実行します：
+# 1. データの読み込み
+# 2. モデルの初期化
+# 3. 学習の実行
+# 4. 結果の保存
 # =============================================================================
 
-import torch
-from src import *
+import os
+import sys
+from datetime import datetime
+import pytz
 
-# =============================================================================
-# メインスクリプト入口
-# =============================================================================
-if __name__ == "__main__":
-    # ---- データの読み込み ----
-    soil, df_bc, X_ic, h0, df_obs = load_all_data()
+from src.model import PINN
+from src.config import DEVICE
+from src.train import train
+from src.loader import load_all_data
 
-    # ---- PINN インスタンス & 学習 ----
+def main():
+    # モデルの初期化
     model = PINN().to(DEVICE)
-    print("Start training…")
-    train(model, soil, df_bc, X_ic, h0, df_obs, epochs=EPOCHS)
+    
+    # データの読み込み
+    soil_map, df_bc, X_ic, h0, df_obs = load_all_data()
+    
+    # モデルの学習
+    model = train(model, soil_map, df_bc, X_ic, h0, df_obs)
+    
+    print("学習が完了しました")
 
-    # 保存例
-    torch.save(model.state_dict(), "pinn_groundwater.pt")
-    print("モデルを保存しました → pinn_groundwater.pt")
+if __name__ == "__main__":
+    main()

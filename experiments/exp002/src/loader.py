@@ -11,17 +11,26 @@
 import pandas as pd
 import torch
 from pathlib import Path
-from config import *
+from .config import *
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 土壌タイプのパラメータを読み込む
+SOIL_TYPES = pd.read_csv(DATA_DIR / "soil_types.csv").set_index('soil_type').to_dict('index')
 
 def load_all_data():
     """すべてのデータを読み込む（ファイルが存在しない場合はデフォルト値を使用）"""
     # 土壌パラメータ
     try:
-        soil = load_soil("soil.csv")
+        soil_map = load_soil("soil.csv")
     except FileNotFoundError:
-        # Loam デフォルト
-        soil = dict(alpha=0.036, n=1.56, theta_r=0.078, theta_s=0.43, Ks=1.2e-5, Ss=1e-4)
-        print("[warn] soil.csv が見つからないため Loam パラメータを使用")
+        # デフォルトは全てLoam
+        soil_map = pd.DataFrame({
+            'x': [0.0], 'y': [0.0], 'z': [0.0],
+            'soil_type': ['loam']
+        })
+        print("[warn] soil.csv が見つからないため全ての地点でLoamパラメータを使用")
 
     # 境界条件
     try:
@@ -46,12 +55,68 @@ def load_all_data():
         df_obs = pd.DataFrame()
         print("[warn] obs.csv が見つからないため空のDataFrameを使用")
 
-    return soil, df_bc, X_ic, h0, df_obs
+    return soil_map, df_bc, X_ic, h0, df_obs
 
 def load_soil(path):
-    """土壌パラメータを読み込む"""
+    """土壌パラメータを読み込む
+    CSV: x,y,z,soil_type または x,y,z,alpha,n,theta_r,theta_s,Ks,Ss
+    """
     data_path = DATA_DIR / path
-    return pd.read_csv(data_path).iloc[0].to_dict()
+    df = pd.read_csv(data_path)
+    
+    # 文字列カラムの空白を削除
+    if 'soil_type' in df.columns:
+        df['soil_type'] = df['soil_type'].str.strip()
+    
+    print("Loaded soil.csv:")
+    print(df)
+    print("\nUnique soil types:", df['soil_type'].unique())
+    print("Available soil types:", list(SOIL_TYPES.keys()))
+    
+    # soil_typeが指定されている場合
+    if 'soil_type' in df.columns:
+        # 土壌タイプの存在確認
+        for soil_type in df['soil_type'].unique():
+            if soil_type not in SOIL_TYPES:
+                raise ValueError(f"Unknown soil type: {soil_type}")
+    # パラメータが直接指定されている場合
+    elif all(param in df.columns for param in ['alpha', 'n', 'theta_r', 'theta_s', 'Ks', 'Ss']):
+        pass
+    else:
+        raise ValueError("soil.csv must contain either soil_type or all soil parameters")
+    
+    return df
+
+def get_soil_params(x, y, z, soil_map):
+    """指定された地点の土壌パラメータを取得"""
+    # 入力がTensorの場合はnumpyに変換
+    if torch.is_tensor(x):
+        x = x.item()
+    if torch.is_tensor(y):
+        y = y.item()
+    if torch.is_tensor(z):
+        z = z.item()
+    
+    # 最も近い地点を探す
+    distances = ((soil_map['x'].values - x)**2 + 
+                (soil_map['y'].values - y)**2 + 
+                (soil_map['z'].values - z)**2)
+    nearest_idx = distances.argmin()
+    
+    # soil_typeが指定されている場合
+    if 'soil_type' in soil_map.columns:
+        soil_type = soil_map.iloc[nearest_idx]['soil_type']
+        return SOIL_TYPES[soil_type]
+    # パラメータが直接指定されている場合
+    else:
+        return {
+            'alpha': soil_map.iloc[nearest_idx]['alpha'],
+            'n': soil_map.iloc[nearest_idx]['n'],
+            'theta_r': soil_map.iloc[nearest_idx]['theta_r'],
+            'theta_s': soil_map.iloc[nearest_idx]['theta_s'],
+            'Ks': soil_map.iloc[nearest_idx]['Ks'],
+            'Ss': soil_map.iloc[nearest_idx]['Ss']
+        }
 
 def load_bc(path):
     """境界条件を読み込む

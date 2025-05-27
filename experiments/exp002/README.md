@@ -1,51 +1,70 @@
-# 地下水流動シミュレーション用PINN実装
+# PINN Groundwater Model
 
-物理情報ニューラルネットワーク（PINN）を用いた地下水流動シミュレーションの実装です。
-
-## プロジェクト構成
+## ディレクトリ構造
 
 ```
 experiments/exp002/
 ├── src/                    # ソースコード
-│   ├── __init__.py        # パッケージ初期化
+│   ├── __init__.py
 │   ├── config.py          # 設定ファイル
-│   ├── model.py           # ニューラルネットワークと物理モデル
+│   ├── model.py           # モデル定義
 │   ├── loss.py            # 損失関数
-│   ├── loader.py          # データ読み込みユーティリティ
 │   └── train.py           # 学習ループ
-├── data/                   # データディレクトリ
-│   ├── soil.csv           # 土壌パラメータ
-│   ├── bc.csv             # 境界条件
-│   ├── ic.csv             # 初期条件
-│   └── obs.csv            # 観測データ
-├── main.py                # エントリーポイント
-└── README.md              # 本ファイル
+├── analysis/              # 分析・可視化スクリプト
+│   ├── __init__.py
+│   ├── check_model.py     # モデル確認
+│   └── visualize.py       # 結果可視化
+├── data/                  # データファイル
+│   └── observation.csv
+├── result/               # 結果保存ディレクトリ
+│   └── model_YYYYMMDD_HHMMSS/
+│       ├── model.pt
+│       ├── loss_history.csv
+│       ├── loss_history.png
+│       ├── pred_vs_obs.png
+│       └── head_distribution_t*.png
+├── main.py              # メインスクリプト
+└── README.md           # ドキュメント
 ```
-
-## 必要要件
-
-- Python 3.8以上
-- PyTorch
-- NumPy
-- Pandas
 
 ## 使用方法
 
-1. `data`ディレクトリに以下の入力データファイルを準備：
-   - `soil.csv`: 土壌パラメータ
-   - `bc.csv`: 境界条件
-   - `ic.csv`: 初期条件
-   - `obs.csv`: 観測データ（任意）
+### 1. 学習の実行
 
-2. シミュレーションの実行：
-   ```bash
-   python main.py
-   ```
+```bash
+make run EXP=exp002
+```
 
-## 主な機能
+### 2. モデルの確認
 
-- 物理情報ニューラルネットワーク（PINN）の実装
-- van Genuchten-Mualemモデルによる不飽和流動の計算
-- 偏微分方程式の残差に対する自動微分
-- 飽和帯と不飽和帯の自動判定と計算
-- Dirichlet条件とNeumann条件の境界条件に対応 
+利用可能なモデルの一覧を表示：
+```bash
+make check EXP=exp002 ARGS="--list"
+```
+
+特定のモデルを確認：
+```bash
+make check EXP=exp002 ARGS="--model model_20240321_123456"
+```
+
+### 3. 結果の可視化
+
+利用可能なモデルの一覧を表示：
+```bash
+make visualize EXP=exp002 ARGS="--list"
+```
+
+特定のモデルの結果を可視化：
+```bash
+make visualize EXP=exp002 ARGS="--model model_20240321_123456"
+```
+
+## 出力ファイル
+
+各モデルの結果は、`result/model_YYYYMMDD_HHMMSS/`ディレクトリに保存されます：
+
+- `model.pt`: 学習済みモデル
+- `loss_history.csv`: 損失履歴
+- `loss_history.png`: 損失履歴のグラフ
+- `pred_vs_obs.png`: 予測値と観測値の比較
+- `head_distribution_t*.png`: 各時間点での水頭分布 

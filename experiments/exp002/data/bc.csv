@@ -1,0 +1,7 @@
+x,y,z,t,type,value,nx,ny,nz
+0,0,0,0,Dirichlet,10,1,0,0
+0,0,0,0,Dirichlet,5,0,1,0
+0,0,0,0,Neumann,0,0,0,1
+1,1,1,0,Dirichlet,0,1,0,0
+1,1,1,0,Dirichlet,0,0,1,0
+1,1,1,0,Neumann,0,0,0,1 

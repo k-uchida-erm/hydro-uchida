@@ -20,12 +20,16 @@ from pathlib import Path
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DTYPE = torch.float32
 
+# グリッド設定
 GRID = dict(Nx=64, Ny=64, Nz=32, dx=1.0, dy=1.0, dz=0.5)
 DT = 3600.0                       # [s] オイラー陰ステップ
+
+# 学習パラメータ
 EPOCHS = 20000
-BATCH_INT = 4096                  # PDE 内部点/バッチ
-LEARNING_RATE = 1e-3
-W = dict(PDE=1.0, BC=10.0, IC=10.0, OBS=1.0)
+BATCH_INT = 1024                  # バッチサイズをさらに小さくして安定性を向上
+LEARNING_RATE = 1e-5              # 学習率をさらに下げて安定性を向上
+MAX_GRAD_NORM = 1.0               # 勾配クリッピングの閾値
+W = dict(PDE=0.01, BC=1.0, IC=1.0, OBS=1.0)  # PDE Lossの重みをさらに下げる
 
 # データディレクトリ
 DATA_DIR = Path(__file__).parent.parent / "data"
