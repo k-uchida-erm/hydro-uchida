@@ -34,3 +34,45 @@ __pycache__/
 # Git
 *.patch
 *.diff
+
+# 実験結果ディレクトリ
+experiments/*/result/
+experiments/*/result/*
+
+# Python関連
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 環境関連
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE関連
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS関連
+Thumbs.db
