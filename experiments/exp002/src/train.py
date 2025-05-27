@@ -22,6 +22,8 @@ import pytz
 from .config import *
 from .loss import residual, bc_loss, ic_loss, obs_loss
 from pathlib import Path
+import subprocess
+import sys
 
 def ensure_dir(directory):
     """ディレクトリが存在しない場合は作成"""
@@ -29,13 +31,41 @@ def ensure_dir(directory):
         os.makedirs(directory)
 
 def generate_internal_points():
-    """内部点の生成（学習用）"""
-    X_int = torch.rand(BATCH_INT, 4, device=DEVICE, dtype=DTYPE)
-    X_int[:, 0] *= GRID['Nx'] * GRID['dx']      # x [m]
-    X_int[:, 1] *= GRID['Ny'] * GRID['dy']      # y [m]
-    X_int[:, 2] *= -GRID['Nz'] * GRID['dz']     # z [m] (地下を負値で表す)
-    X_int[:, 3] *= DT * 10                      # t [s]   : 任意 horizon
+    """内部点の生成"""
+    X_int = torch.rand(BATCH_SIZE, 4, device=DEVICE, dtype=DTYPE)
+    X_int[:, 0] *= GRID['Nx'] * GRID['dx']  # x
+    X_int[:, 1] *= GRID['Ny'] * GRID['dy']  # y
+    X_int[:, 2] *= GRID['Nz'] * GRID['dz']  # z
+    X_int[:, 3] *= GRID['Nt'] * DT          # t
     return X_int
+
+def run_analysis(model_dir):
+    """モデルの分析と可視化を実行"""
+    try:
+        # 分析結果を保存するファイル
+        analysis_file = os.path.join(model_dir, 'analysis_results.txt')
+        
+        # 分析コマンドを実行
+        check_cmd = f"python3 analysis/check_model.py --model {os.path.basename(model_dir)}"
+        visualize_cmd = f"python3 analysis/visualize.py --model {os.path.basename(model_dir)}"
+        
+        # 分析結果を取得
+        check_result = subprocess.run(check_cmd, shell=True, capture_output=True, text=True)
+        
+        # 分析結果をファイルに保存
+        with open(analysis_file, 'w') as f:
+            f.write("=== モデル分析結果 ===\n")
+            f.write(f"分析時刻: {datetime.now(pytz.timezone('Asia/Tokyo')).strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(check_result.stdout)
+            if check_result.stderr:
+                f.write("\n=== エラー ===\n")
+                f.write(check_result.stderr)
+        
+        # 可視化を実行
+        subprocess.run(visualize_cmd, shell=True)
+        
+    except Exception as e:
+        print(f"分析の実行中にエラーが発生しました: {str(e)}")
 
 def train(model, soil_map, df_bc, X_ic, h0, df_obs, epochs=EPOCHS):
     """PINNモデルの学習"""
@@ -79,7 +109,10 @@ def train(model, soil_map, df_bc, X_ic, h0, df_obs, epochs=EPOCHS):
             loss_obs = obs_loss(model, df_obs)
             
             # 重み付き総損失
-            loss = W['PDE'] * loss_pde + W['BC'] * loss_bc + W['IC'] * loss_ic + W['OBS'] * loss_obs
+            loss = LOSS_WEIGHTS['pde'] * loss_pde + \
+                   LOSS_WEIGHTS['bc'] * loss_bc + \
+                   LOSS_WEIGHTS['ic'] * loss_ic + \
+                   LOSS_WEIGHTS['obs'] * loss_obs
             
             # 勾配計算と更新
             loss.backward()
@@ -111,22 +144,23 @@ def train(model, soil_map, df_bc, X_ic, h0, df_obs, epochs=EPOCHS):
                 })
                 
                 # 進捗の表示
-                print(f"\nEpoch {epoch + 1}/{epochs}")
-                print(f"  PDE Loss: {loss_pde.item():.2e}")
-                print(f"  BC Loss: {loss_bc.item():.2e}")
-                print(f"  IC Loss: {loss_ic.item():.2e}")
-                print(f"  Obs Loss: {loss_obs.item():.2e}")
-                print(f"  Total Loss: {loss.item():.2e}")
-                print(f"  Learning Rate: {new_lr:.2e}")
+                print(f"\rEpoch {epoch + 1}/{epochs} ({((epoch + 1)/epochs*100):.1f}%)", end="")
                 
                 # 定期的にモデルを保存
                 torch.save(model.state_dict(), os.path.join(model_dir, 'model.pt'))
                 pd.DataFrame(loss_history).to_csv(os.path.join(model_dir, 'loss_history.csv'), index=False)
+                
+                # 分析と可視化を実行
+                run_analysis(model_dir)
     
     except KeyboardInterrupt:
         print("\n学習を中断しました。現在のモデルを保存します...")
         torch.save(model.state_dict(), os.path.join(model_dir, 'model.pt'))
         pd.DataFrame(loss_history).to_csv(os.path.join(model_dir, 'loss_history.csv'), index=False)
+        
+        # 分析と可視化を実行
+        run_analysis(model_dir)
+        
         print("モデルを保存しました。")
     
     finally:
@@ -137,7 +171,10 @@ def train(model, soil_map, df_bc, X_ic, h0, df_obs, epochs=EPOCHS):
         torch.save(model.state_dict(), os.path.join(model_dir, 'model.pt'))
         df_loss.to_csv(os.path.join(model_dir, 'loss_history.csv'), index=False)
         
-        print(f"モデルを保存しました: {model_dir}")
+        # 最終的な分析と可視化を実行
+        run_analysis(model_dir)
+        
+        print(f"\n学習完了: {model_dir}")
     
     return model
 

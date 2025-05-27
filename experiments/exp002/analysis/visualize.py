@@ -126,18 +126,17 @@ def plot_head_distribution(model, t, output_dir):
     # head_distributionサブディレクトリに保存
     plots_dir = os.path.join(output_dir, 'plots')
     head_dir = os.path.join(plots_dir, 'head_distribution')
+    ensure_dir(plots_dir)
     ensure_dir(head_dir)
     plt.savefig(os.path.join(head_dir, f'head_distribution_t{t}.png'))
     plt.close()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='学習結果を可視化')
-    parser.add_argument('--list', action='store_true', help='利用可能なモデルの一覧を表示')
+    parser = argparse.ArgumentParser(description='学習済みモデルの可視化')
     parser.add_argument('--model', type=str, help='可視化するモデルディレクトリ名')
-    parser.add_argument('--obs-data', type=str, default='data/obs.csv',
-                      help='観測データファイルのパス (デフォルト: data/obs.csv)')
     args = parser.parse_args()
     
+    # モデルディレクトリの取得
     result_dir = "result"
     model_dirs = [d for d in os.listdir(result_dir) if d.startswith("model_")]
     
@@ -145,21 +144,19 @@ if __name__ == "__main__":
         print("モデルディレクトリが見つかりません")
         exit(1)
     
-    if args.list:
-        list_models(result_dir)
-        exit(0)
-    
-    # モデルの読み込み
-    model = PINN().to(DEVICE)
     if args.model:
         model_dir = os.path.join(result_dir, args.model)
         if not os.path.exists(model_dir):
             print(f"エラー: ディレクトリ {model_dir} が見つかりません")
-            list_models(result_dir)
             exit(1)
     else:
         model_dir = os.path.join(result_dir, sorted(model_dirs)[-1])
     
+    # 可視化の実行
+    print(f"モデル {os.path.basename(model_dir)} の可視化を開始します...")
+    
+    # モデルの読み込み
+    model = PINN().to(DEVICE)
     model_path = os.path.join(model_dir, 'model.pt')
     model.load_state_dict(torch.load(model_path, map_location=DEVICE))
     print(f"モデル {os.path.basename(model_dir)} を読み込みました")
@@ -168,19 +165,19 @@ if __name__ == "__main__":
     loss_file = os.path.join(model_dir, 'loss_history.csv')
     if os.path.exists(loss_file):
         plot_loss_history(loss_file, model_dir)
-        print(f"損失履歴をプロットしました: {model_dir}/plots/loss_history.png")
+        print(f"損失履歴をプロットしました: {os.path.join(model_dir, 'plots/loss_history.png')}")
     else:
         print("警告: 損失履歴ファイルが見つかりません")
     
     # 予測値と観測値の比較
-    if os.path.exists(args.obs_data):
-        df_obs = pd.read_csv(args.obs_data)
-        plot_prediction_vs_observation(model, df_obs, model_dir)
-        print(f"予測値と観測値の比較をプロットしました: {model_dir}/plots/pred_vs_obs.png")
-    else:
-        print(f"警告: 観測データファイルが見つかりません: {args.obs_data}")
+    df_obs = pd.read_csv('data/obs.csv')
+    plot_prediction_vs_observation(model, df_obs, model_dir)
+    print(f"予測値と観測値の比較をプロットしました: {os.path.join(model_dir, 'plots/pred_vs_obs.png')}")
     
     # 水頭分布の可視化（複数の時間点）
     for t in [0, 10, 20, 30]:
         plot_head_distribution(model, t, model_dir)
-        print(f"水頭分布をプロットしました: {model_dir}/plots/head_distribution/head_distribution_t{t}.png") 
+        print(f"水頭分布をプロットしました: {os.path.join(model_dir, 'plots/head_distribution/head_distribution_t{t}.png')}")
+    
+    # プロットの保存
+    print(f"プロットを保存しました: {model_dir}") 

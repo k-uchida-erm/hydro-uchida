@@ -17,13 +17,21 @@ from .config import *
 
 class PINN(nn.Module):
     """4→1 MLP (隠れ層 4, Tanh)"""
-    def __init__(self, width=128, depth=4):
+    def __init__(self):
         super().__init__()
-        layers = [nn.Linear(4, width), nn.Tanh()]
-        for _ in range(depth-1):
-            layers += [nn.Linear(width, width), nn.Tanh()]
-        layers += [nn.Linear(width, 1)]
-        self.net = nn.Sequential(*layers)
+        self.net = nn.Sequential(
+            nn.Linear(4, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, 1)
+        )
     def forward(self, x):
         return self.net(x)
 

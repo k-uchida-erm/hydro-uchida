@@ -21,15 +21,26 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DTYPE = torch.float32
 
 # グリッド設定
-GRID = dict(Nx=64, Ny=64, Nz=32, dx=1.0, dy=1.0, dz=0.5)
-DT = 3600.0                       # [s] オイラー陰ステップ
+GRID = dict(
+    Nx=64, Ny=64, Nz=32,  # グリッド数
+    dx=1.0, dy=1.0, dz=0.5,  # グリッド間隔 [m]
+    Nt=10  # 時間ステップ数
+)
+DT = 3600.0  # [s] 時間ステップ
 
 # 学習パラメータ
-EPOCHS = 20000
-BATCH_INT = 1024                  # バッチサイズをさらに小さくして安定性を向上
-LEARNING_RATE = 1e-5              # 学習率をさらに下げて安定性を向上
+EPOCHS = 1000
+BATCH_SIZE = 1024
+LEARNING_RATE = 1e-4
 MAX_GRAD_NORM = 1.0               # 勾配クリッピングの閾値
-W = dict(PDE=0.01, BC=1.0, IC=1.0, OBS=1.0)  # PDE Lossの重みをさらに下げる
+
+# 損失関数の重み
+LOSS_WEIGHTS = {
+    'pde': 0.1,    # PDE Lossの重みを下げる
+    'bc': 1.0,     # 境界条件の重みは維持
+    'ic': 1.0,     # 初期条件の重みは維持
+    'obs': 10.0    # 観測データの重みを上げる
+}
 
 # データディレクトリ
 DATA_DIR = Path(__file__).parent.parent / "data"
