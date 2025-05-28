@@ -15,13 +15,13 @@ experiments/exp002/
 │   ├── __init__.py
 │   ├── check_model.py     # モデル確認
 │   └── visualize.py       # 結果可視化
-├── data/                  # データファイル
+├── data/                  # データファイル(動作確認用ダミーデータ)
 │   ├── bc.csv            # 境界条件
 │   ├── ic.csv            # 初期条件
 │   ├── obs.csv           # 観測データ
 │   ├── soil.csv          # 地盤データ
 │   └── soil_types.csv    # 地盤タイプ定義
-├── result/               # 結果保存ディレクトリ
+├── result/               # 結果保存ディレクトリ(git管理外)
 │   └── model_YYYYMMDD_HHMMSS/
 │       ├── model.pt      # 学習済みモデル
 │       ├── loss_history.csv
