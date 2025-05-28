@@ -16,9 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import argparse
-from src.model import PINN
-from src.config import DEVICE
-from src.loader import load_all_data
+from src import PINN, DEVICE, load_all_data
 
 def ensure_dir(directory):
     """ディレクトリが存在しない場合は作成"""

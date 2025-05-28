@@ -14,9 +14,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import torch
 import pandas as pd
 import argparse
-from src.model import PINN
-from src.config import DEVICE
 import numpy as np
+from src import PINN, DEVICE, load_all_data
 
 def list_models(result_dir):
     """利用可能なモデルディレクトリの一覧を表示"""
@@ -71,7 +70,6 @@ def check_model(model_dir):
     
     # 観測データとの比較による評価指標の計算
     try:
-        from src.loader import load_all_data
         _, _, _, _, df_obs = load_all_data()
         
         # 観測点での予測値を計算

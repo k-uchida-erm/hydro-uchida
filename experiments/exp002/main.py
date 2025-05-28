@@ -13,10 +13,7 @@ import sys
 from datetime import datetime
 import pytz
 
-from src.model import PINN
-from src.config import DEVICE
-from src.train import train
-from src.loader import load_all_data
+from src import PINN, DEVICE, train, load_all_data
 
 def main():
     # モデルの初期化
