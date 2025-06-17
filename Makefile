@@ -1,41 +1,35 @@
 # 実験フォルダのルート
 EXPERIMENTS_DIR=./experiments
 
-# 実行対象の実験名（例: exp001）
-EXP?=default
-
 # 新しい実験ディレクトリを作る
 new:
-	mkdir -p $(EXPERIMENTS_DIR)/$(EXP)/src
-	mkdir -p $(EXPERIMENTS_DIR)/$(EXP)/data
-	mkdir -p $(EXPERIMENTS_DIR)/$(EXP)/result
-	mkdir -p $(EXPERIMENTS_DIR)/$(EXP)/analysis
-	touch $(EXPERIMENTS_DIR)/$(EXP)/main.py
-	touch $(EXPERIMENTS_DIR)/$(EXP)/README.md
-	touch $(EXPERIMENTS_DIR)/$(EXP)/src/__init__.py
-	touch $(EXPERIMENTS_DIR)/$(EXP)/src/loader.py
-	touch $(EXPERIMENTS_DIR)/$(EXP)/src/config.py
-	touch $(EXPERIMENTS_DIR)/$(EXP)/src/model.py
-	touch $(EXPERIMENTS_DIR)/$(EXP)/src/train.py
-	touch $(EXPERIMENTS_DIR)/$(EXP)/analysis/check_model.py
-	touch $(EXPERIMENTS_DIR)/$(EXP)/analysis/visualize.py
-	@echo "Created experiment structure in $(EXPERIMENTS_DIR)/$(EXP)/"
-	@echo "  - main.py"
-	@echo "  - README.md"
-	@echo "  - src/"
-	@echo "    - __init__.py"
-	@echo "    - loader.py"
-	@echo "    - config.py"
-	@echo "    - model.py"
-	@echo "    - train.py"
-	@echo "  - data/"
-	@echo "  - result/"
-	@echo "  - analysis/"
-	@echo "    - check_model.py"
-	@echo "    - visualize.py"
+	@# 既存のv*ディレクトリから最大のバージョン番号を取得
+	@MAX_VERSION=$$(ls -d $(EXPERIMENTS_DIR)/v* 2>/dev/null | grep -o '[0-9]*$$' | sort -n | tail -n 1 || echo 0); \
+	NEXT_VERSION=$$((MAX_VERSION + 1)); \
+	NEW_DIR="$(EXPERIMENTS_DIR)/v$$NEXT_VERSION"; \
+	PREV_DIR="$(EXPERIMENTS_DIR)/v$$MAX_VERSION"; \
+	\
+	if [ $$MAX_VERSION -eq 0 ]; then \
+		echo "Error: No previous version found. Please create v1 manually first."; \
+		exit 1; \
+	fi; \
+	\
+	echo "Creating v$$NEXT_VERSION from v$$MAX_VERSION"; \
+	cp -r "$$PREV_DIR" "$$NEW_DIR"; \
+	echo "Created v$$NEXT_VERSION in $$NEW_DIR/"
+
+# 最新バージョンを取得
+LATEST_VERSION := $(shell ls -d $(EXPERIMENTS_DIR)/v* 2>/dev/null | grep -o '[0-9]*$$' | sort -n | tail -n 1)
+# 実行対象の実験名（指定がない場合は最新バージョン）
+EXP ?= v$(LATEST_VERSION)
 
 # 実験を実行（今のEXPをボリュームとしてマウント）
 run:
+	@if [ -z "$(LATEST_VERSION)" ]; then \
+		echo "Error: No version found in $(EXPERIMENTS_DIR)"; \
+		exit 1; \
+	fi
+	@echo "Running experiment $(EXP)"
 	docker run -it --rm \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP):/usr/src/app \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP)/result:/usr/src/app/result \
@@ -45,6 +39,11 @@ run:
 
 # モデルを確認
 check:
+	@if [ -z "$(LATEST_VERSION)" ]; then \
+		echo "Error: No version found in $(EXPERIMENTS_DIR)"; \
+		exit 1; \
+	fi
+	@echo "Checking model in $(EXP)"
 	docker run -it --rm \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP):/usr/src/app \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP)/result:/usr/src/app/result \
@@ -54,6 +53,11 @@ check:
 
 # 結果を可視化
 visualize:
+	@if [ -z "$(LATEST_VERSION)" ]; then \
+		echo "Error: No version found in $(EXPERIMENTS_DIR)"; \
+		exit 1; \
+	fi
+	@echo "Visualizing results in $(EXP)"
 	docker run -it --rm \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP):/usr/src/app \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP)/result:/usr/src/app/result \
