@@ -1,49 +1,65 @@
 # PINN Groundwater Model
 
-## ディレクトリ構造
+## ディレクトリ構成
 
 ```
-experiments/exp002/
+experiments/v3/
 ├── src/                    # ソースコード
 │   ├── __init__.py
-│   ├── config.py          # 設定ファイル
-│   ├── model.py           # モデル定義
-│   ├── loss.py            # 損失関数
-│   ├── loader.py          # データローダー
-│   └── train.py           # 学習ループ
-├── analysis/              # 分析・可視化スクリプト
+│   ├── config.py
+│   ├── model.py
+│   ├── loss.py
+│   ├── loader.py
+│   └── train.py
+├── analysis/               # 分析・可視化スクリプト
 │   ├── __init__.py
-│   ├── check_model.py     # モデル確認
-│   └── visualize.py       # 結果可視化
-├── data/                  # データファイル(動作確認用ダミーデータ)
-│   ├── bc.csv            # 境界条件
-│   ├── ic.csv            # 初期条件
-│   ├── obs.csv           # 観測データ
-│   ├── soil.csv          # 地盤データ
-│   └── soil_types.csv    # 地盤タイプ定義
-├── result/               # 結果保存ディレクトリ(git管理外)
+│   ├── check_model.py
+│   └── visualize.py
+├── data/                   # データファイル
+│   ├── bc.csv
+│   ├── ic.csv
+│   ├── soil.csv
+│   ├── soil_types.csv
+│   └── verfi_1.csv
+├── result/                 # 結果保存ディレクトリ
 │   └── model_YYYYMMDD_HHMMSS/
-│       ├── model.pt      # 学習済みモデル
+│       ├── model.pt
 │       ├── loss_history.csv
 │       ├── analysis_results.txt
-│       └── plots/        # 可視化結果
+│       └── plots/
 │           ├── loss_history.png
 │           ├── pred_vs_obs.png
 │           └── head_distribution/
 │               └── head_distribution_t*.png
-├── main.py              # メインスクリプト
-└── README.md           # ドキュメント
+├── main.py                 # 学習用スクリプト
+├── validate.py             # バリデーション用スクリプト
+├── README.md
+└── variables.md
 ```
 
 ## 使用方法
 
-### 1. 学習の実行
+### 1. 学習（Training）
 
-```bash
-make run EXP=exp002
+```sh
+python main.py
 ```
+- `data/obs.csv` があればそれを観測データ（正解データ）として学習します。
+- `data/obs.csv` が無い場合は `data/verfi_1.csv` を自動的に観測データとして学習に使います。
 
-### 2. モデルの確認
+### 2. バリデーション（Validation）
+
+```sh
+python validate.py
+```
+- `data/verfi_1.csv` を使って学習済みモデルのバリデーション損失を計算します。
+- `validate.py` の `MODEL_PATH` を変更すれば、任意の学習済みモデルで評価できます。
+
+### 3. データについて
+- `verfi_1.csv` だけでも「学習」と「バリデーション」両方に使えます。
+- データが増えた場合は、学習用（obs.csv）とバリデーション用（verfi_1.csv）を分けて運用することも可能です。
+
+### 4. モデルの確認
 
 利用可能なモデルの一覧を表示：
 ```bash
@@ -55,7 +71,7 @@ make check EXP=exp002 ARGS="--list"
 make check EXP=exp002 ARGS="--model model_20240321_123456"
 ```
 
-### 3. 結果の可視化
+### 5. 結果の可視化
 
 利用可能なモデルの一覧を表示：
 ```bash

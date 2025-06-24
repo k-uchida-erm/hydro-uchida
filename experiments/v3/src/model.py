@@ -13,62 +13,27 @@
 
 import torch
 import torch.nn as nn
-from .config import CASE
+from .config import *
 
 class PINN(nn.Module):
-    def __init__(self, input_dim=4, hidden_dim=50, num_layers=4):
+    """4→1 MLP (隠れ層 4, Tanh)"""
+    def __init__(self):
         super().__init__()
-        
-        # 入力層
-        layers = [nn.Linear(input_dim, hidden_dim), nn.Tanh()]
-        
-        # 隠れ層
-        for _ in range(num_layers - 1):
-            layers.extend([
-                nn.Linear(hidden_dim, hidden_dim),
-                nn.Tanh()
-            ])
-        
-        # 出力層
-        layers.append(nn.Linear(hidden_dim, 1))
-        
-        self.net = nn.Sequential(*layers)
-        
-    def forward(self, x, y, z, t):
-        """入力: x, y, z, t の座標"""
-        inputs = torch.stack([x, y, z, t], dim=1)
-        return self.net(inputs)
-    
-    def predict(self, x, y, z, t):
-        """予測用のメソッド（勾配計算なし）"""
-        with torch.no_grad():
-            return self.forward(x, y, z, t)
-    
-    def compute_derivatives(self, x, y, z, t):
-        """必要な微分を計算"""
-        x.requires_grad_(True)
-        y.requires_grad_(True)
-        z.requires_grad_(True)
-        t.requires_grad_(True)
-        
-        h = self.forward(x, y, z, t)
-        
-        # 1階微分
-        dh_dx = torch.autograd.grad(h, x, grad_outputs=torch.ones_like(h), create_graph=True)[0]
-        dh_dy = torch.autograd.grad(h, y, grad_outputs=torch.ones_like(h), create_graph=True)[0]
-        dh_dz = torch.autograd.grad(h, z, grad_outputs=torch.ones_like(h), create_graph=True)[0]
-        dh_dt = torch.autograd.grad(h, t, grad_outputs=torch.ones_like(h), create_graph=True)[0]
-        
-        # 2階微分
-        d2h_dx2 = torch.autograd.grad(dh_dx, x, grad_outputs=torch.ones_like(dh_dx), create_graph=True)[0]
-        d2h_dy2 = torch.autograd.grad(dh_dy, y, grad_outputs=torch.ones_like(dh_dy), create_graph=True)[0]
-        d2h_dz2 = torch.autograd.grad(dh_dz, z, grad_outputs=torch.ones_like(dh_dz), create_graph=True)[0]
-        
-        return {
-            'h': h,
-            'dh_dx': dh_dx, 'dh_dy': dh_dy, 'dh_dz': dh_dz, 'dh_dt': dh_dt,
-            'd2h_dx2': d2h_dx2, 'd2h_dy2': d2h_dy2, 'd2h_dz2': d2h_dz2
-        }
+        self.net = nn.Sequential(
+            nn.Linear(4, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, 1)
+        )
+    def forward(self, x):
+        return self.net(x)
 
 def Se(phi, a, n):
     """有効飽和度の計算（数値的安定性を改善）"""

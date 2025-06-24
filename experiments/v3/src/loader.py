@@ -11,7 +11,7 @@
 import pandas as pd
 import torch
 from pathlib import Path
-from .config import DATA_DIR, DEVICE, DTYPE
+from .config import *
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -52,8 +52,12 @@ def load_all_data():
     try:
         df_obs = load_obs("obs.csv")
     except FileNotFoundError:
-        df_obs = pd.DataFrame()
-        print("[warn] obs.csv が見つからないため空のDataFrameを使用")
+        try:
+            df_obs = load_validation("verfi_1.csv")
+            print("[warn] obs.csv が見つからないため verfi_1.csv を観測データとして使用")
+        except FileNotFoundError:
+            df_obs = pd.DataFrame()
+            print("[warn] obs.csv, verfi_1.csv が見つからないため空のDataFrameを使用")
 
     return soil_map, df_bc, X_ic, h0, df_obs
 
@@ -136,67 +140,24 @@ def load_ic(path):
 def load_obs(path):
     """観測データを読み込む"""
     data_path = DATA_DIR / path
-    return pd.read_csv(data_path)
+    df = pd.read_csv(data_path)
+    # x, y がなければ0で補完
+    if 'x' not in df.columns:
+        df['x'] = 0.0
+    if 'y' not in df.columns:
+        df['y'] = 0.0
+    cols = ['x', 'y', 'z', 't', 'h']
+    df = df[[c for c in cols if c in df.columns]]
+    return df
 
-def load_soil_params():
-    """土壌パラメータを読み込む"""
-    soil_df = pd.read_csv(DATA_DIR / 'soil.csv')
-    return {
-        'Ks': torch.tensor(soil_df['Ks'].values[0], dtype=DTYPE, device=DEVICE),
-        'theta_s': torch.tensor(soil_df['theta_s'].values[0], dtype=DTYPE, device=DEVICE),
-        'theta_r': torch.tensor(soil_df['theta_r'].values[0], dtype=DTYPE, device=DEVICE),
-        'Ss': torch.tensor(soil_df['Ss'].values[0], dtype=DTYPE, device=DEVICE),
-        'alpha': torch.tensor(soil_df['alpha'].values[0], dtype=DTYPE, device=DEVICE),
-        'n': torch.tensor(soil_df['n'].values[0], dtype=DTYPE, device=DEVICE)
-    }
-
-def load_boundary_conditions():
-    """境界条件を読み込む"""
-    bc_df = pd.read_csv(DATA_DIR / 'bc.csv')
-    bc_points = []
-    bc_values = []
-    bc_types = []
-    
-    for _, row in bc_df.iterrows():
-        bc_points.append([row['x'], row['y'], row['z'], row['t']])
-        bc_values.append(row['value'])
-        bc_types.append(row['type'])
-    
-    return {
-        'points': torch.tensor(bc_points, dtype=DTYPE, device=DEVICE),
-        'values': torch.tensor(bc_values, dtype=DTYPE, device=DEVICE),
-        'types': bc_types
-    }
-
-def load_initial_conditions():
-    """初期条件を読み込む"""
-    ic_df = pd.read_csv(DATA_DIR / 'ic.csv')
-    ic_points = []
-    ic_values = []
-    
-    for _, row in ic_df.iterrows():
-        ic_points.append([row['x'], row['y'], row['z']])
-        ic_values.append(row['h'])
-    
-    return {
-        'points': torch.tensor(ic_points, dtype=DTYPE, device=DEVICE),
-        'values': torch.tensor(ic_values, dtype=DTYPE, device=DEVICE)
-    }
-
-def load_observation_data():
-    """観測データを読み込む（存在する場合）"""
-    obs_file = DATA_DIR / 'obs.csv'
-    if obs_file.exists():
-        obs_df = pd.read_csv(obs_file)
-        obs_points = []
-        obs_values = []
-        
-        for _, row in obs_df.iterrows():
-            obs_points.append([row['x'], row['y'], row['z'], row['t']])
-            obs_values.append(row['h'])
-        
-        return {
-            'points': torch.tensor(obs_points, dtype=DTYPE, device=DEVICE),
-            'values': torch.tensor(obs_values, dtype=DTYPE, device=DEVICE)
-        }
-    return None
+def load_validation(path="verfi_1.csv"):
+    """バリデーション用観測データを読み込む（z, t, h）"""
+    data_path = DATA_DIR / path
+    df = pd.read_csv(data_path)
+    if 'x' not in df.columns:
+        df['x'] = 0.0
+    if 'y' not in df.columns:
+        df['y'] = 0.0
+    cols = ['x', 'y', 'z', 't', 'h']
+    df = df[[c for c in cols if c in df.columns]]
+    return df

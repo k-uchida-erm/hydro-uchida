@@ -35,7 +35,8 @@ from .loader import (
     load_bc,
     load_ic,
     load_obs,
-    load_all_data
+    load_all_data,
+    load_validation
 )
 
 # 学習
@@ -72,6 +73,7 @@ __all__ = [
     'load_ic',
     'load_obs',
     'load_all_data',
+    'load_validation',
     
     # 学習
     'train'

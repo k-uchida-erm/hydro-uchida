@@ -12,6 +12,7 @@ import os
 import sys
 from datetime import datetime
 import pytz
+import subprocess
 
 from src import PINN, DEVICE, train, load_all_data
 
@@ -22,10 +23,15 @@ def main():
     # データの読み込み
     soil_map, df_bc, X_ic, h0, df_obs = load_all_data()
     
-    # モデルの学習
-    model = train(model, soil_map, df_bc, X_ic, h0, df_obs)
-    
-    print("学習が完了しました")
+    try:
+        # モデルの学習
+        model = train(model, soil_map, df_bc, X_ic, h0, df_obs)
+        print("学習が完了しました")
+    except KeyboardInterrupt:
+        print("学習を中断しました。現在のモデルを保存します...")
+    finally:
+        print("バリデーションを自動実行します...")
+        subprocess.run(["python3", "validate.py"])
 
 if __name__ == "__main__":
     main()

@@ -24,15 +24,6 @@ from .loss import residual, bc_loss, ic_loss, obs_loss
 from pathlib import Path
 import subprocess
 import sys
-import numpy as np
-import json
-
-from .model import PINN
-from .loader import (
-    load_soil_params, load_boundary_conditions,
-    load_initial_conditions, load_observation_data
-)
-from .loss import compute_total_loss
 
 def ensure_dir(directory):
     """ディレクトリが存在しない場合は作成"""
@@ -76,89 +67,116 @@ def run_analysis(model_dir):
     except Exception as e:
         print(f"分析の実行中にエラーが発生しました: {str(e)}")
 
-def generate_pde_points():
-    """PDEの学習点を生成"""
-    if CASE == 1:
-        # 1次元の場合
-        z = torch.linspace(0, GRID['Nz'] * GRID['dz'], GRID['Nz'] + 1, dtype=DTYPE, device=DEVICE)
-        t = torch.linspace(0, GRID['Nt'] * DT, GRID['Nt'] + 1, dtype=DTYPE, device=DEVICE)
-        
-        # メッシュグリッドを作成
-        Z, T = torch.meshgrid(z, t, indexing='ij')
-        
-        # 1次元なのでx, yは0固定
-        X = torch.zeros_like(Z)
-        Y = torch.zeros_like(Z)
-        
-    else:
-        # 2次元の場合
-        y = torch.linspace(0, GRID['Ny'] * GRID['dy'], GRID['Ny'] + 1, dtype=DTYPE, device=DEVICE)
-        z = torch.linspace(0, GRID['Nz'] * GRID['dz'], GRID['Nz'] + 1, dtype=DTYPE, device=DEVICE)
-        t = torch.linspace(0, GRID['Nt'] * DT, GRID['Nt'] + 1, dtype=DTYPE, device=DEVICE)
-        
-        # メッシュグリッドを作成
-        Y, Z, T = torch.meshgrid(y, z, t, indexing='ij')
-        
-        # 2次元なのでxは0固定
-        X = torch.zeros_like(Y)
-    
-    return X.flatten(), Y.flatten(), Z.flatten(), T.flatten()
-
-def train():
-    """学習を実行"""
-    # データを読み込む
-    soil_params = load_soil_params()
-    bc_data = load_boundary_conditions()
-    ic_data = load_initial_conditions()
-    obs_data = load_observation_data()
-    
-    # モデルを初期化
-    model = PINN().to(DEVICE)
+def train(model, soil_map, df_bc, X_ic, h0, df_obs, epochs=EPOCHS):
+    """PINNモデルの学習"""
+    # 最適化器の設定
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
-    # PDEの学習点を生成
-    pde_points = generate_pde_points()
+    # 学習率スケジューラーの設定
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, 
+        mode='min', 
+        factor=0.5, 
+        patience=100
+    )
     
-    # 学習ループ
-    history = []
-    for epoch in tqdm(range(EPOCHS)):
-        optimizer.zero_grad()
+    # 損失履歴を保存するリスト
+    loss_history = []
+    
+    # 内部点の生成（学習用）
+    X_int = generate_internal_points()
+    
+    # モデル保存用のディレクトリを作成
+    timestamp = datetime.now(pytz.timezone('Asia/Tokyo')).strftime('%Y%m%d_%H%M%S')
+    model_dir = os.path.join('result', f'model_{timestamp}')
+    ensure_dir(model_dir)
+    
+    try:
+        # 学習ループ
+        for epoch in tqdm(range(epochs), desc="Training"):
+            optimizer.zero_grad()
+            
+            # 物理方程式の残差
+            loss_pde = torch.mean(residual(model, X_int, soil_map, Ss=1e-4) ** 2)
+            
+            # 境界条件
+            loss_bc = bc_loss(model, df_bc)
+            
+            # 初期条件
+            loss_ic = ic_loss(model, X_ic, h0)
+            
+            # 観測データ
+            loss_obs = obs_loss(model, df_obs)
+            
+            # 重み付き総損失
+            loss = LOSS_WEIGHTS['pde'] * loss_pde + \
+                   LOSS_WEIGHTS['bc'] * loss_bc + \
+                   LOSS_WEIGHTS['ic'] * loss_ic + \
+                   LOSS_WEIGHTS['obs'] * loss_obs
+            
+            # 勾配計算と更新
+            loss.backward()
+            
+            # 勾配クリッピング
+            torch.nn.utils.clip_grad_norm_(model.parameters(), MAX_GRAD_NORM)
+            
+            optimizer.step()
+            
+            # 学習率の更新
+            old_lr = optimizer.param_groups[0]['lr']
+            scheduler.step(loss.item())
+            new_lr = optimizer.param_groups[0]['lr']
+            
+            # 学習率が変更された場合に表示
+            if new_lr != old_lr:
+                print(f"\nLearning rate decreased from {old_lr:.2e} to {new_lr:.2e}")
+            
+            # 損失履歴の記録
+            if (epoch + 1) % 10 == 0:  # 10エポックごとに記録
+                loss_history.append({
+                    'epoch': epoch + 1,
+                    'pde_loss': loss_pde.item(),
+                    'bc_loss': loss_bc.item(),
+                    'ic_loss': loss_ic.item(),
+                    'obs_loss': loss_obs.item(),
+                    'total_loss': loss.item(),
+                    'learning_rate': new_lr
+                })
+                
+                # 進捗の表示
+                print(f"\rEpoch {epoch + 1}/{epochs} ({((epoch + 1)/epochs*100):.1f}%)", end="")
+                
+                # 定期的にモデルを保存
+                torch.save(model.state_dict(), os.path.join(model_dir, 'model.pt'))
+                pd.DataFrame(loss_history).to_csv(os.path.join(model_dir, 'loss_history.csv'), index=False)
+                
+                # 分析と可視化を実行
+                run_analysis(model_dir)
+    
+    except KeyboardInterrupt:
+        print("\n学習を中断しました。現在のモデルを保存します...")
+        torch.save(model.state_dict(), os.path.join(model_dir, 'model.pt'))
+        pd.DataFrame(loss_history).to_csv(os.path.join(model_dir, 'loss_history.csv'), index=False)
         
-        # 損失を計算
-        losses = compute_total_loss(
-            model, pde_points, bc_data, ic_data, obs_data, soil_params
-        )
+        # 分析と可視化を実行
+        run_analysis(model_dir)
         
-        # 勾配を計算して更新
-        losses['total'].backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), MAX_GRAD_NORM)
-        optimizer.step()
+        print("モデルを保存しました。")
+    
+    finally:
+        # 損失履歴をDataFrameに変換
+        df_loss = pd.DataFrame(loss_history)
         
-        # 履歴を記録
-        if epoch % 100 == 0:
-            history.append({
-                'epoch': epoch,
-                'total_loss': losses['total'].item(),
-                'pde_loss': losses['pde'].item(),
-                'bc_loss': losses['bc'].item(),
-                'ic_loss': losses['ic'].item(),
-                'obs_loss': losses['obs'].item()
-            })
+        # モデルと損失履歴を保存
+        torch.save(model.state_dict(), os.path.join(model_dir, 'model.pt'))
+        df_loss.to_csv(os.path.join(model_dir, 'loss_history.csv'), index=False)
+        
+        # 最終的な分析と可視化を実行
+        run_analysis(model_dir)
+        
+        print(f"\n学習完了: {model_dir}")
     
-    # 学習履歴を保存
-    result_dir = Path('result')
-    result_dir.mkdir(exist_ok=True)
-    
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    history_file = result_dir / f'history_case{CASE}_{timestamp}.json'
-    with open(history_file, 'w') as f:
-        json.dump(history, f, indent=2)
-    
-    # モデルを保存
-    model_file = result_dir / f'model_case{CASE}_{timestamp}.pt'
-    torch.save(model.state_dict(), model_file)
-    
-    return model, history
+    return model
 
 def main():
     # モデルの初期化
@@ -169,7 +187,7 @@ def main():
     soil_map, df_bc, X_ic, h0, df_obs = load_data()
     
     # モデルの学習
-    model, history = train()
+    model = train(model, soil_map, df_bc, X_ic, h0, df_obs)
     
     print("学習が完了しました")
 

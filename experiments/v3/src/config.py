@@ -16,51 +16,31 @@ import torch.nn as nn
 import torch.autograd as autograd
 from pathlib import Path
 
-# 乱数シードの固定
-SEED = 42
-torch.manual_seed(SEED)
-torch.cuda.manual_seed(SEED)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-
 # デバイス設定
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DTYPE = torch.float32
 
-# ケース設定
-CASE = 1  # 1: 鉛直1次元, 2: 鉛直2次元
-
 # グリッド設定
-if CASE == 1:
-    # ケース1: 鉛直1次元
-    GRID = {
-        'Nx': 1, 'Ny': 1, 'Nz': 100,  # 空間分割数
-        'dx': 0.1, 'dy': 0.1, 'dz': 0.1,  # 格子間隔 (m)
-        'Nt': 100  # 時間ステップ数
-    }
-    DT = 0.01  # 時間ステップ幅 (s)
-else:
-    # ケース2: 鉛直2次元
-    GRID = {
-        'Nx': 1, 'Ny': 40, 'Nz': 30,  # 空間分割数
-        'dx': 0.05, 'dy': 0.05, 'dz': 0.1,  # 格子間隔 (m)
-        'Nt': 100  # 時間ステップ数
-    }
-    DT = 0.01  # 時間ステップ幅 (s)
+GRID = dict(
+    Nx=64, Ny=64, Nz=32,  # グリッド数
+    dx=1.0, dy=1.0, dz=0.5,  # グリッド間隔 [m]
+    Nt=10  # 時間ステップ数
+)
+DT = 3600.0  # [s] 時間ステップ
 
 # 学習パラメータ
-EPOCHS = 10000
-BATCH_SIZE = 1000
-LEARNING_RATE = 1e-3
-MAX_GRAD_NORM = 1.0
+EPOCHS = 1000
+BATCH_SIZE = 1024
+LEARNING_RATE = 1e-4
+MAX_GRAD_NORM = 1.0               # 勾配クリッピングの閾値
 
 # 損失関数の重み
 LOSS_WEIGHTS = {
-    'pde': 1.0,
-    'bc': 1.0,
-    'ic': 1.0,
-    'obs': 1.0
+    'pde': 0.1,    # PDE Lossの重みを下げる
+    'bc': 1.0,     # 境界条件の重みは維持
+    'ic': 1.0,     # 初期条件の重みは維持
+    'obs': 10.0    # 観測データの重みを上げる
 }
 
 # データディレクトリ
-DATA_DIR = Path('data') / f'case{CASE}'
+DATA_DIR = Path(__file__).parent.parent / "data"
