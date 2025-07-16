@@ -1,24 +1,12 @@
-# =============================================================================
-# 損失関数定義ファイル
-# =============================================================================
-# このファイルは、PINNの学習に使用される損失関数を定義します：
-# 1. 偏微分方程式の残差計算
-#    - 拡散項（∇·(K∇h)）の自動微分による計算
-#    - 時間微分項の計算
-# 2. 各種損失関数
-#    - 境界条件損失（Dirichlet/Neumann条件）
-#    - 初期条件損失
-#    - 観測データ損失
-# =============================================================================
-
 import torch
 import torch.autograd as autograd
 from .config import *
 from .model import K_unsat, dtheta_dh, theta
 from .loader import get_soil_params
 
+# 拡散項の計算（∇·(K∇h)）
+# ∇hは勾配ベクトル、Kは透水係数、∇·(K∇h)は勾配ベクトルの発散
 def div_K_grad(h, K, X):
-    """拡散項の計算（∇·(K∇h)）"""
     grads = []
     for i in range(3):
         # 勾配の計算
@@ -51,8 +39,8 @@ def div_K_grad(h, K, X):
     
     return result
 
+# 物理方程式の残差を計算
 def residual(model, X, soil_map, Ss):
-    """物理方程式の残差を計算"""
     # 各地点の土壌パラメータを取得
     soil_params = []
     for i in range(len(X)):
@@ -109,8 +97,8 @@ def residual(model, X, soil_map, Ss):
     
     return residual  # q=0
 
+# 境界条件の損失
 def bc_loss(model, df):
-    """境界条件の損失を計算"""
     if df.empty:
         return torch.tensor(0., device=DEVICE)
     
@@ -158,8 +146,8 @@ def ic_loss(model,X_ic,h0):
     X=torch.cat([X_ic,torch.zeros_like(h0)],dim=1)
     return torch.mean((model(X)-h0)**2)
 
+# 観測データの損失
 def obs_loss(model, df):
-    """観測データの損失を計算"""
     if df is None or df.empty:
         return torch.tensor(0., device=DEVICE)
     
