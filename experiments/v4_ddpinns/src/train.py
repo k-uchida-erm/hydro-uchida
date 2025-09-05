@@ -21,7 +21,7 @@ def train(model, soil_map, df_bc, X_ic, psi0, df_train, df_obs, X_res, epochs=EP
     
     fixed_weights = {
         'pde': 1.0,
-        'bc': 10.0,
+        'bc': 20.0,  # 境界条件の重みを増加（深い部分の境界条件を重視）
         'ic': 30.0,
         'obs': 5.0,
         'theta_obs': 40.0
@@ -68,7 +68,8 @@ def train(model, soil_map, df_bc, X_ic, psi0, df_train, df_obs, X_res, epochs=EP
             torch.nn.utils.clip_grad_norm_(model.parameters(), MAX_GRAD_NORM)
             optimizer.step()
 
-            if (epoch + 1) % 500 == 0:
+            # 深い部分の学習を強化するため、より頻繁に学習率を調整
+            if (epoch + 1) % 200 == 0:
                 scheduler.step()
 
             if (epoch + 1) % 10 == 0:
@@ -100,6 +101,14 @@ def train(model, soil_map, df_bc, X_ic, psi0, df_train, df_obs, X_res, epochs=EP
             residual_abs = torch.abs(residuals).detach().cpu().numpy().flatten()
             top_indices = np.argsort(residual_abs)[-100:]
             
+            # 深い部分（z=80-100cm）の残差を特別に監視
+            deep_mask = (X_res_cached[:, 2] >= 80) & (X_res_cached[:, 2] <= 100)
+            if deep_mask.sum() > 0:
+                deep_residuals = residual_abs[deep_mask.cpu().numpy()]
+                deep_top_indices = np.argsort(deep_residuals)[-50:]  # 深い部分の上位50点
+                deep_indices = np.where(deep_mask.cpu().numpy())[0][deep_top_indices]
+                top_indices = np.concatenate([top_indices, deep_indices])
+            
             z_vals = X_res_cached[top_indices, 2].cpu().numpy()
             t_vals = X_res_cached[top_indices, 3].cpu().numpy()
             
@@ -128,7 +137,15 @@ def train(model, soil_map, df_bc, X_ic, psi0, df_train, df_obs, X_res, epochs=EP
                     for z in z_wetfront:
                         new_points.append([0.0, 0.0, z, t])
                 
-                print(f"初期時間の超高密度点 {500*200 + 1000*100} 点を追加")
+                print("深い部分（z=80-100cm）の超高密度サンプリング中...")
+                t_deep = np.linspace(0, 50, 2000)  # 全時間範囲で高密度
+                z_deep = np.linspace(80, 100, 200)  # 深い部分を高密度
+                
+                for t in t_deep:
+                    for z in z_deep:
+                        new_points.append([0.0, 0.0, z, t])
+                
+                print(f"初期時間の超高密度点 {500*200 + 1000*100 + 2000*200} 点を追加")
             
             new_X_res = torch.tensor(new_points, dtype=DTYPE, device=DEVICE)
             X_res_cached = torch.cat([X_res_cached, new_X_res], dim=0)

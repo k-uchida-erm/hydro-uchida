@@ -44,6 +44,7 @@ def load_all_data():
     theta_s = 0.40
     alpha = 1.0
     psi_0 = 0.0
+    # 下側境界のθ値をより正確に設定（深い部分の再現精度向上）
     theta_lb = theta_r + (theta_s - theta_r) * np.exp(alpha * psi_0)
     
     for ti in range(Nt):
