@@ -1,17 +1,3 @@
-# =============================================================================
-# 学習ループ定義ファイル
-# =============================================================================
-# このファイルは、PINNの学習プロセスを定義します：
-# 1. 内部点の生成（一様乱数による）
-# 2. 各種損失の計算
-#    - PDE残差損失
-#    - 境界条件損失
-#    - 初期条件損失
-#    - 観測データ損失
-# 3. 勾配降下によるパラメータ更新
-# 4. 学習進捗の表示
-# =============================================================================
-
 import os
 import torch
 import torch.optim as optim
@@ -25,13 +11,13 @@ from pathlib import Path
 import subprocess
 import sys
 
+# ディレクトリが存在しない場合は作成
 def ensure_dir(directory):
-    """ディレクトリが存在しない場合は作成"""
     if not os.path.exists(directory):
         os.makedirs(directory)
 
+# 内部点の生成
 def generate_internal_points():
-    """内部点の生成"""
     X_int = torch.rand(BATCH_SIZE, 4, device=DEVICE, dtype=DTYPE)
     X_int[:, 0] *= GRID['Nx'] * GRID['dx']  # x
     X_int[:, 1] *= GRID['Ny'] * GRID['dy']  # y
@@ -39,36 +25,7 @@ def generate_internal_points():
     X_int[:, 3] *= GRID['Nt'] * DT          # t
     return X_int
 
-def run_analysis(model_dir):
-    """モデルの分析と可視化を実行"""
-    try:
-        # 分析結果を保存するファイル
-        analysis_file = os.path.join(model_dir, 'analysis_results.txt')
-        
-        # 分析コマンドを実行
-        check_cmd = f"python3 analysis/check_model.py --model {os.path.basename(model_dir)}"
-        visualize_cmd = f"python3 analysis/visualize.py --model {os.path.basename(model_dir)}"
-        
-        # 分析結果を取得
-        check_result = subprocess.run(check_cmd, shell=True, capture_output=True, text=True)
-        
-        # 分析結果をファイルに保存
-        with open(analysis_file, 'w') as f:
-            f.write("=== モデル分析結果 ===\n")
-            f.write(f"分析時刻: {datetime.now(pytz.timezone('Asia/Tokyo')).strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-            f.write(check_result.stdout)
-            if check_result.stderr:
-                f.write("\n=== エラー ===\n")
-                f.write(check_result.stderr)
-        
-        # 可視化を実行
-        subprocess.run(visualize_cmd, shell=True)
-        
-    except Exception as e:
-        print(f"分析の実行中にエラーが発生しました: {str(e)}")
-
-def train(model, soil_map, df_bc, X_ic, h0, df_train, df_obs, epochs=EPOCHS):
-    """PINNモデルの学習"""
+def train(model, soil_map, df_bc, X_ic, h0, df_train, df_obs, epochs=EPOCHS):   
     # 最適化器の設定
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
@@ -186,6 +143,33 @@ def train(model, soil_map, df_bc, X_ic, h0, df_train, df_obs, epochs=EPOCHS):
         print(f"\n学習完了: {model_dir}")
     
     return model
+
+def run_analysis(model_dir):
+    try:
+        # 分析結果を保存するファイル
+        analysis_file = os.path.join(model_dir, 'analysis_results.txt')
+        
+        # 分析コマンドを実行
+        check_cmd = f"python3 analysis/check_model.py --model {os.path.basename(model_dir)}"
+        visualize_cmd = f"python3 analysis/visualize.py --model {os.path.basename(model_dir)}"
+        
+        # 分析結果を取得
+        check_result = subprocess.run(check_cmd, shell=True, capture_output=True, text=True)
+        
+        # 分析結果をファイルに保存
+        with open(analysis_file, 'w') as f:
+            f.write("=== モデル分析結果 ===\n")
+            f.write(f"分析時刻: {datetime.now(pytz.timezone('Asia/Tokyo')).strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(check_result.stdout)
+            if check_result.stderr:
+                f.write("\n=== エラー ===\n")
+                f.write(check_result.stderr)
+        
+        # 可視化を実行
+        subprocess.run(visualize_cmd, shell=True)
+        
+    except Exception as e:
+        print(f"分析の実行中にエラーが発生しました: {str(e)}")
 
 def main():
     # モデルの初期化
