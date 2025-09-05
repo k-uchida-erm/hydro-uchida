@@ -6,3 +6,4 @@ matplotlib>=3.5.0
 tqdm           # 学習ループの進捗バーを出したいとき
 jupyterlab     # Notebook ベースで試したいとき
 pytz           # タイムゾーンの処理用
+scikit-learn>=1.1.0
