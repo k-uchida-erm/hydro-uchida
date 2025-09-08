@@ -95,11 +95,11 @@ ablation-start:
 	# ベース(本家)→work へコピー（result/ablationは除外）
 	rsync -a --delete --exclude result --exclude ablation $(EXPERIMENTS_DIR)/$(EXP)/ $(ABL_WORK)/; \
 	date '+%Y-%m-%d %H:%M:%S' > "$(ABL_LOCK)"; \
-	if [ ! -f "$(ABL_DIR)/README.txt" ]; then \
-		echo "Case: $(CASE)" > "$(ABL_DIR)/README.txt"; \
-		echo "Started: $$(date '+%Y-%m-%d %H:%M:%S')" >> "$(ABL_DIR)/README.txt"; \
-		echo "\n[Planned changes / Notes]" >> "$(ABL_DIR)/README.txt"; \
-		echo "- " >> "$(ABL_DIR)/README.txt"; \
+	if [ ! -f "$(ABL_DIR)/README.md" ]; then \
+		echo "Case: $(CASE)" > "$(ABL_DIR)/README.md"; \
+		echo "Started: $$(date '+%Y-%m-%d %H:%M:%S')" >> "$(ABL_DIR)/README.md"; \
+		echo "\n## Planned changes / Notes" >> "$(ABL_DIR)/README.md"; \
+		echo "- " >> "$(ABL_DIR)/README.md"; \
 	fi; \
 	echo "[Ablation] Ready. Edit here: $(ABL_WORK). Then run: make ablation-finish EXP=$(EXP) CASE=$(CASE)"
 

@@ -128,7 +128,7 @@ def compute_changed_files(base_dir: Path, edited_dir: Path, since: Optional[date
 
 def summarize_changed_files_section(files: List[str], max_files: int = 200) -> str:
     lines = []
-    lines.append('[Changed files]\n')
+    lines.append('## Changed files\n')
     if not files:
         lines.append('(no changes)\n')
         return ''.join(lines)
@@ -142,7 +142,7 @@ def summarize_changed_files_section(files: List[str], max_files: int = 200) -> s
 
 
 def summarize_hunks_from_patch(patch_text: str, allowed_files: Set[str], max_files: int = 10, max_hunks_per_file: int = 2, max_lines_per_hunk: int = 60) -> str:
-    lines = ['\n[Key hunks]\n']
+    lines = ['\n## Key hunks\n']
     file_count = 0
     current_file = None
     hunks_for_file = 0
@@ -230,7 +230,7 @@ def append_analysis_summary(result_dir: Path, out_readme: Path):
         if flag:
             keep.append(ln)
     with out_readme.open('a') as f:
-        f.write('\n[Key metrics]\n')
+        f.write('\n## Key metrics\n')
         for ln in keep:
             f.write(ln + '\n')
 
@@ -248,8 +248,8 @@ def _clean_previous_sections(readme_path: Path):
     if not readme_path.exists():
         return
     text = readme_path.read_text(errors='ignore')
-    # 最初の [Diff summary] 以降を削除して上書き（冪等化）
-    idx = text.find('\n[Diff summary]')
+    # 最初の Diff summary セクション以降を削除（Markdown専用）
+    idx = text.find('\n## Diff summary')
     if idx == -1:
         return
     trimmed = text[:idx]
@@ -284,10 +284,11 @@ def main():
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # 既存のREADMEの差分セクションをクリア（冪等化）
-    readme = out_dir / 'README.txt'
+    # README は Markdown のみを対象
+    readme = out_dir / 'README.md'
     if not readme.exists():
-        readme.write_text('')
+        readme.write_text('', encoding='utf-8')
+    # 既存のREADMEの差分セクションをクリア（冪等化）
     _clean_previous_sections(readme)
 
     # ベースライン時刻（優先度: --since > .lock > READMEのStarted行）
@@ -310,10 +311,10 @@ def main():
     if args.save_patch:
         (out_dir / 'patch.diff').write_text(patch)
 
-    # README append
-    readme = out_dir / 'README.txt'
+    # README append (Markdown only)
+    readme = out_dir / 'README.md'
     with readme.open('a') as f:
-        f.write('\n[Diff summary]\n')
+        f.write('\n## Diff summary\n')
         f.write(diff_stats(base_dir, edited_dir, only_files=set(changed_files)))
         f.write('\n')
         f.write(summarize_changed_files_section(changed_files))
