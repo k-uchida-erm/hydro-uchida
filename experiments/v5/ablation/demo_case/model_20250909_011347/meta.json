@@ -1,0 +1,19 @@
+{
+  "config_version": "v5-fixed-20250908",
+  "seed": 42,
+  "deterministic": true,
+  "fixed_weights": {
+    "pde": 1.0,
+    "bc": 30.0,
+    "ic": 30.0,
+    "obs": 8.0,
+    "theta_obs": 40.0
+  },
+  "rar": {
+    "N_res": 20000,
+    "focus_ratio": 0.4
+  },
+  "bc": {
+    "neumann_flux": -0.9
+  }
+}

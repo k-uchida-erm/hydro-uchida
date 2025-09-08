@@ -72,3 +72,68 @@ rebuild:
 	docker rm -f python-ml-uchida 2>/dev/null || true
 	docker rmi -f python-ml 2>/dev/null || true
 	docker build -t python-ml .
+
+# ========= Ablation 3-commands =========
+# start: 作業用ワークスペース/ケースDIR作成（編集は ablation/<CASE>/work を対象）
+# finish: work を実行→結果をケースDIRへ集約→差分要約→ワーク/ロックを掃除
+# abort: 実行せずワーク/ロックを掃除
+
+ABL_DIR=$(EXPERIMENTS_DIR)/$(EXP)/ablation/$(CASE)
+ABL_WORK=$(ABL_DIR)/work
+ABL_LOCK=$(ABL_DIR)/.lock
+
+ablation-start:
+	@if [ -z "$(EXP)" ] || [ -z "$(CASE)" ]; then \
+		echo "Usage: make ablation-start EXP=v5 CASE=case_name"; \
+		exit 1; \
+	fi
+	@if [ -f "$(ABL_LOCK)" ]; then \
+		echo "Lock exists: $(ABL_LOCK). Run ablation-finish or ablation-abort first."; exit 1; \
+	fi
+	@echo "[Ablation] init $(EXP) $(CASE)"; \
+	mkdir -p "$(ABL_DIR)" "$(ABL_WORK)"; \
+	# ベース(本家)→work へコピー（result/ablationは除外）
+	rsync -a --delete --exclude result --exclude ablation $(EXPERIMENTS_DIR)/$(EXP)/ $(ABL_WORK)/; \
+	date '+%Y-%m-%d %H:%M:%S' > "$(ABL_LOCK)"; \
+	if [ ! -f "$(ABL_DIR)/README.txt" ]; then \
+		echo "Case: $(CASE)" > "$(ABL_DIR)/README.txt"; \
+		echo "Started: $$(date '+%Y-%m-%d %H:%M:%S')" >> "$(ABL_DIR)/README.txt"; \
+		echo "\n[Planned changes / Notes]" >> "$(ABL_DIR)/README.txt"; \
+		echo "- " >> "$(ABL_DIR)/README.txt"; \
+	fi; \
+	echo "[Ablation] Ready. Edit here: $(ABL_WORK). Then run: make ablation-finish EXP=$(EXP) CASE=$(CASE)"
+
+ablation-finish:
+	@if [ -z "$(EXP)" ] || [ -z "$(CASE)" ]; then \
+		echo "Usage: make ablation-finish EXP=v5 CASE=case_name"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(ABL_LOCK)" ]; then \
+		echo "No lock: $(ABL_LOCK). Run ablation-start first."; exit 1; \
+	fi
+	@echo "[Ablation] finishing $(EXP) $(CASE)"; \
+	# work を実行し、成果物はケースDIRに保存
+	docker run -it --rm \
+		--memory=8g \
+		--memory-swap=16g \
+		-v $(shell pwd)/$(ABL_WORK):/usr/src/app \
+		-v $(shell pwd)/$(ABL_DIR):/usr/src/app/result \
+		-v $(shell pwd)/data:/usr/src/app/global_data \
+		--workdir /usr/src/app \
+		--name python-ml-uchida python-ml python3 main.py; \
+	mkdir -p "$(ABL_DIR)"; \
+	python3 tools/ablation_summarize.py --base "$(EXPERIMENTS_DIR)/$(EXP)" --edited "$(ABL_WORK)" --result_dir "$(ABL_DIR)" --out "$(ABL_DIR)"; \
+	rm -rf "$(ABL_WORK)" "$(ABL_LOCK)"; \
+	echo "[Ablation] Completed. Output: $(ABL_DIR)."
+
+ablation-abort:
+	@if [ -z "$(EXP)" ] || [ -z "$(CASE)" ]; then \
+		echo "Usage: make ablation-abort EXP=v5 CASE=case_name"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(ABL_LOCK)" ]; then \
+		echo "No lock: $(ABL_LOCK). Nothing to abort."; exit 0; \
+	fi
+	@echo "[Ablation] aborting $(EXP) $(CASE)"; \
+	rm -rf "$(ABL_WORK)" "$(ABL_LOCK)"; \
+	echo "[Ablation] Cleaned up."
