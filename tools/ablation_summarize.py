@@ -134,10 +134,12 @@ def summarize_changed_files_section(files: List[str], max_files: int = 200) -> s
         return ''.join(lines)
     total = len(files)
     show = files[:max_files]
-    for p in show:
-        lines.append(f'- {p}\n')
+    # markdown table
+    lines.append('\n| # | Path |\n|---:|---|\n')
+    for i, p in enumerate(show, 1):
+        lines.append(f'| {i} | `{p}` |\n')
     if total > len(show):
-        lines.append(f'... and {total - len(show)} more\n')
+        lines.append(f'\n… and {total - len(show)} more\n')
     return ''.join(lines)
 
 
@@ -182,7 +184,8 @@ def summarize_hunks_from_patch(patch_text: str, allowed_files: Set[str], max_fil
                 break
             if hunks_for_file == 0:
                 # first hunk for this file: print header
-                lines.append(f'--- {current_file}\n')
+                lines.append(f'\n<details><summary>{current_file}</summary>\n\n')
+                lines.append('```diff\n')
                 file_count += 1
             if hunks_for_file >= max_hunks_per_file:
                 collecting = False
@@ -207,6 +210,11 @@ def summarize_hunks_from_patch(patch_text: str, allowed_files: Set[str], max_fil
     # flush last hunk if any
     if collecting:
         flush_hunk()
+    # close any open code fences/details
+    if file_count > 0:
+        if not lines[-1].endswith('```\n'):
+            lines.append('```\n')
+        lines.append('\n</details>\n')
     return ''.join(lines)
 
 
@@ -229,10 +237,49 @@ def append_analysis_summary(result_dir: Path, out_readme: Path):
             continue
         if flag:
             keep.append(ln)
+    # Try to format overall metrics into a small table
+    overall = {}
+    icbc = {}
+    rows_per_time = []
+    section = None
+    for ln in keep:
+        if ln.startswith('[Overall'):
+            section = 'overall'
+            continue
+        if ln.startswith('[IC'):
+            section = 'icbc'
+            continue
+        if ln.startswith('[Per-time'):
+            section = 'per_time'
+            continue
+        if section == 'overall' and ':' in ln:
+            k, v = [s.strip() for s in ln.split(':', 1)]
+            overall[k] = v
+        elif section == 'icbc' and 'RMSE' in ln:
+            parts = ln.replace('RMSE', '').replace(':', '').split()
+            # very lightweight parse
+            if len(parts) >= 2:
+                icbc['IC t=0'] = parts[0]
+                icbc['BC top'] = parts[1]
+        elif section == 'per_time':
+            rows_per_time.append(ln)
+
     with out_readme.open('a') as f:
         f.write('\n## Key metrics\n')
-        for ln in keep:
-            f.write(ln + '\n')
+        if overall:
+            f.write('\n| Metric | Value |\n|---|---:|\n')
+            for k, v in overall.items():
+                f.write(f'| {k} | {v} |\n')
+        if icbc:
+            f.write('\n| Condition | RMSE |\n|---|---:|\n')
+            for k, v in icbc.items():
+                f.write(f'| {k} | {v} |\n')
+        if rows_per_time:
+            f.write('\n<details><summary>Per-time psi metrics</summary>\n\n')
+            f.write('```text\n')
+            for ln in rows_per_time:
+                f.write(ln + '\n')
+            f.write('```\n\n</details>\n')
 
 
 def _read_lock_timestamp(lock_path: Path) -> Optional[datetime]:
