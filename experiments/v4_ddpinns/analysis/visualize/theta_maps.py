@@ -29,7 +29,7 @@ def plot_theta_maps_paper(model_dir: Path, model, psi_true: np.ndarray):
     theta_s = float(p['theta_s'])
 
     Nz, Nt = psi_true.shape
-    z_vals = np.arange(Nz, dtype=float)
+    z_vals = np.arange(Nz, dtype=float)  # 0-9cm (10点)
     t_vals = np.arange(Nt, dtype=float)
 
     Z, T = np.meshgrid(z_vals, t_vals, indexing='ij')

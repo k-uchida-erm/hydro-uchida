@@ -29,7 +29,7 @@ def plot_theta_profiles_evolution(model_dir: Path, model, psi_true: np.ndarray):
     theta_s = float(p['theta_s'])
 
     Nz, Nt = psi_true.shape
-    z_vals = np.arange(Nz, dtype=float)
+    z_vals = np.arange(Nz, dtype=float)  # 0-9cm (10点)
     
     t_paper = [0, 0.1, 0.5, 1, 3, 5, 10]
     t_indices = [int(t * (Nt-1) / 10) for t in t_paper]

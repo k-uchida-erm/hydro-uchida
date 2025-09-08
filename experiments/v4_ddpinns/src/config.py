@@ -5,11 +5,11 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DTYPE = torch.float32
 
 GRID = dict(
-    Nx=1, Ny=1, Nz=100,
+    Nx=1, Ny=1, Nz=10,
     dx=1.0, dy=1.0, dz=1.0,
-    Nt=50
+    Nt=50  # 0-10時間の範囲（公式と同じ）
 )
-DT = 1.0
+DT = 1.0  # 0-10時間の範囲で50ステップ（0.2時間間隔）
 
 EPOCHS = 2000
 BATCH_SIZE = 4096
@@ -24,9 +24,10 @@ LOSS_WEIGHTS = {
     'theta_obs': 20.0
 }
 
-LOCAL_DATA_ROOT = Path(__file__).resolve().parents[1] / "data"
-LOCAL_ANALYTICAL = LOCAL_DATA_ROOT / "analytical_solutions"
-LOCAL_PINNS_DATA = LOCAL_DATA_ROOT / "PINNs_codes" / "data"
+# 共通データ参照
+GLOBAL_DATA = Path(__file__).resolve().parents[1] / "global_data"
+LOCAL_ANALYTICAL = GLOBAL_DATA / "ddpinns_srivastava" / "analytical_solutions"
+LOCAL_PINNS_DATA = GLOBAL_DATA / "ddpinns_srivastava" / "PINNs_codes" / "data"
 
 FALLBACK_PINNS_ROOT = Path("/Users/hydro1/ToshiyukiBandai-DD-PINNs-RRE-5de1644")
 FALLBACK_ANALYTICAL = FALLBACK_PINNS_ROOT / "analytical_solutions"

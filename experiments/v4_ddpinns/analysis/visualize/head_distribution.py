@@ -14,7 +14,7 @@ def plot_head_distributions(model_dir: Path, model, psi_true: np.ndarray):
     times = [0, max(0, Nt//3), max(0, 2*Nt//3), Nt-1]
     times = sorted(set([t for t in times if t < Nt]))
 
-    z_vals = np.arange(Nz, dtype=float)
+    z_vals = np.arange(Nz, dtype=float)  # 0-9cm (10点)
     z_tensor = torch.tensor(z_vals, dtype=DTYPE, device=DEVICE).unsqueeze(1)
     x0 = torch.zeros_like(z_tensor)
     y0 = torch.zeros_like(z_tensor)
@@ -48,7 +48,7 @@ def plot_head_distributions(model_dir: Path, model, psi_true: np.ndarray):
 def plot_head_distributions_paper(model_dir: Path, model, psi_true: np.ndarray, h_limits):
     Nt = psi_true.shape[1]
     Nz = psi_true.shape[0]
-    z_vals = np.arange(Nz, dtype=float)
+    z_vals = np.arange(Nz, dtype=float)  # 0-9cm (10点)
     
     times = [0, max(0, Nt//4), max(0, Nt//2), max(0, 3*Nt//4)]
     times = sorted(set([t for t in times if t < Nt]))

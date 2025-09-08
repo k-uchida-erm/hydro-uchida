@@ -63,7 +63,7 @@ def main():
 
     Nt = psi_true.shape[1]
     Nz = psi_true.shape[0]
-    z_vals = np.arange(Nz, dtype=float)
+    z_vals = np.arange(Nz, dtype=float)  # 0-9cm (10点)
     h_all_true = (psi_true + z_vals[:, None])
     hmin = float(h_all_true.min())
     hmax = float(h_all_true.max())

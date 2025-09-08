@@ -31,5 +31,5 @@ LOSS_WEIGHTS = {
     'obs': 5.0     # 観測データの重みを調整
 }
 
-# データディレクトリ
-DATA_DIR = Path(__file__).parent.parent / "data"
+# データディレクトリ（コンテナ内の共通dataを参照）
+DATA_DIR = Path(__file__).resolve().parents[1] / "global_data" / "vertical_1d_infiltration"

@@ -21,9 +21,9 @@ def train(model, soil_map, df_bc, X_ic, psi0, df_train, df_obs, X_res, epochs=EP
     
     fixed_weights = {
         'pde': 1.0,
-        'bc': 20.0,  # 境界条件の重みを増加（深い部分の境界条件を重視）
+        'bc': 40.0,  # v5に合わせてBCを強化
         'ic': 30.0,
-        'obs': 5.0,
+        'obs': 8.0,   # v5に合わせて観測をやや増
         'theta_obs': 40.0
     }
     
@@ -101,8 +101,8 @@ def train(model, soil_map, df_bc, X_ic, psi0, df_train, df_obs, X_res, epochs=EP
             residual_abs = torch.abs(residuals).detach().cpu().numpy().flatten()
             top_indices = np.argsort(residual_abs)[-100:]
             
-            # 深い部分（z=80-100cm）の残差を特別に監視
-            deep_mask = (X_res_cached[:, 2] >= 80) & (X_res_cached[:, 2] <= 100)
+            # 深い部分（z=8-10cm）の残差を特別に監視
+            deep_mask = (X_res_cached[:, 2] >= 8) & (X_res_cached[:, 2] <= 10)
             if deep_mask.sum() > 0:
                 deep_residuals = residual_abs[deep_mask.cpu().numpy()]
                 deep_top_indices = np.argsort(deep_residuals)[-50:]  # 深い部分の上位50点
@@ -116,36 +116,33 @@ def train(model, soil_map, df_bc, X_ic, psi0, df_train, df_obs, X_res, epochs=EP
             for i in range(len(top_indices)):
                 z_noise = np.random.normal(0, 0.5)
                 t_noise = np.random.normal(0, 0.1)
-                new_z = np.clip(z_vals[i] + z_noise, 0, 99)
-                new_t = np.clip(t_vals[i] + t_noise, 0, 50)
+                new_z = np.clip(z_vals[i] + z_noise, 0, 9)
+                new_t = np.clip(t_vals[i] + t_noise, 0, 49)  # 0-10時間の範囲
                 new_points.append([0.0, 0.0, new_z, new_t])
             
             if rar_iter == 0:
-                print("初期時間（t=0-0.5）の超高密度サンプリング中...")
-                t_early = np.linspace(0, 0.5, 500)
-                z_early = np.linspace(0, 99, 200)
-                
+                print("初期時間（t=0-2）の重点サンプリング中...")
+                t_early = np.linspace(0, 2, 25)
+                z_early = np.linspace(0, 9, 11)
                 for t in t_early:
                     for z in z_early:
-                        new_points.append([0.0, 0.0, z, t])
-                
-                print("湿潤フロント近傍（z=70-90cm）の超高密度サンプリング中...")
-                t_wetfront = np.linspace(0, 2, 1000)
-                z_wetfront = np.linspace(70, 90, 100)
-                
+                        new_points.append([0.0, 0.0, z, t])  # 約275点
+
+                print("湿潤フロント近傍（z=7-9cm）の重点サンプリング中...")
+                t_wetfront = np.linspace(0, 2, 60)
+                z_wetfront = np.linspace(7, 9, 40)
                 for t in t_wetfront:
                     for z in z_wetfront:
-                        new_points.append([0.0, 0.0, z, t])
-                
-                print("深い部分（z=80-100cm）の超高密度サンプリング中...")
-                t_deep = np.linspace(0, 50, 2000)  # 全時間範囲で高密度
-                z_deep = np.linspace(80, 100, 200)  # 深い部分を高密度
-                
+                        new_points.append([0.0, 0.0, z, t])  # 約2400点
+
+                print("深い部分（z=8-10cm）の重点サンプリング中...")
+                t_deep = np.linspace(0, 10, 100)
+                z_deep = np.linspace(8, 10, 40)
                 for t in t_deep:
                     for z in z_deep:
-                        new_points.append([0.0, 0.0, z, t])
-                
-                print(f"初期時間の超高密度点 {500*200 + 1000*100 + 2000*200} 点を追加")
+                        new_points.append([0.0, 0.0, z, t])  # 約4000点
+
+                print("初期時間の重点点を追加（合計 ≲ 7千点）")
             
             new_X_res = torch.tensor(new_points, dtype=DTYPE, device=DEVICE)
             X_res_cached = torch.cat([X_res_cached, new_X_res], dim=0)
@@ -162,7 +159,12 @@ def train(model, soil_map, df_bc, X_ic, psi0, df_train, df_obs, X_res, epochs=EP
 
 
 def train_bfgs(model, soil_map, df_bc, X_ic, psi0, df_train, df_obs, X_res, model_dir):
+    iteration_count = 0
+    best_loss = float('inf')
+    max_iterations = 400
+    
     def closure():
+        nonlocal iteration_count, best_loss
         optimizer.zero_grad()
         loss_pde = torch.mean(residual(model, X_res, soil_map, Ss=1e-4) ** 2)
         loss_bc_val = bc_loss(model, df_bc, soil_map)
@@ -178,16 +180,33 @@ def train_bfgs(model, soil_map, df_bc, X_ic, psi0, df_train, df_obs, X_res, mode
                LOSS_WEIGHTS['theta_obs'] * loss_theta)
 
         loss.backward()
+        
+        # 進行状況を表示
+        iteration_count += 1
+        current_loss = loss.item()
+        if current_loss < best_loss:
+            best_loss = current_loss
+            
+        # 進捗率を計算
+        progress_percent = min(100.0, (iteration_count / max_iterations) * 100)
+        
+        if iteration_count % 20 == 0 or iteration_count <= 10:
+            print(f"L-BFGS反復 {iteration_count}/{max_iterations} ({progress_percent:.1f}%): 損失 = {current_loss:.6f} (最良 = {best_loss:.6f})")
+        
         return loss
 
     optimizer = optim.LBFGS(model.parameters(), 
                            lr=1.0, 
-                           max_iter=50000,
-                           max_eval=50000,
+                           max_iter=max_iterations,
+                           max_eval=max_iterations * 2,  # 評価回数も調整
                            history_size=50,
                            line_search_fn="strong_wolfe")
     
     print("L-BFGS-B最適化実行中...")
+    print("進行状況を20反復ごとに表示します...")
     optimizer.step(closure)
+    
+    final_progress = min(100.0, (iteration_count / max_iterations) * 100)
+    print(f"L-BFGS最適化完了: 総反復数 = {iteration_count}/{max_iterations} ({final_progress:.1f}%), 最終損失 = {best_loss:.6f}")
     
     return model
