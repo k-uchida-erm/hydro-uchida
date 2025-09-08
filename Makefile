@@ -31,9 +31,11 @@ run:
 	fi
 	@echo "Running experiment $(EXP)"
 	docker run -it --rm \
+	--memory=8g \
+	--memory-swap=16g \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP):/usr/src/app \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP)/result:/usr/src/app/result \
-	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP)/data:/usr/src/app/data \
+	-v $(shell pwd)/data:/usr/src/app/global_data \
 	--workdir /usr/src/app \
 	--name python-ml-uchida python-ml python3 main.py
 
@@ -47,7 +49,7 @@ check:
 	docker run -it --rm \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP):/usr/src/app \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP)/result:/usr/src/app/result \
-	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP)/data:/usr/src/app/data \
+	-v $(shell pwd)/data:/usr/src/app/global_data \
 	--workdir /usr/src/app \
 	--name python-ml-uchida python-ml python3 analysis/check_model.py $(ARGS)
 
@@ -61,7 +63,7 @@ visualize:
 	docker run -it --rm \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP):/usr/src/app \
 	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP)/result:/usr/src/app/result \
-	-v $(shell pwd)/$(EXPERIMENTS_DIR)/$(EXP)/data:/usr/src/app/data \
+	-v $(shell pwd)/data:/usr/src/app/global_data \
 	--workdir /usr/src/app \
 	--name python-ml-uchida python-ml python3 analysis/visualize.py $(ARGS)
 

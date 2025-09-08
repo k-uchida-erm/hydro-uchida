@@ -7,3 +7,5 @@ tqdm           # 学習ループの進捗バーを出したいとき
 jupyterlab     # Notebook ベースで試したいとき
 pytz           # タイムゾーンの処理用
 scikit-learn>=1.1.0
+xarray>=2023.1.0
+netCDF4>=1.6.0

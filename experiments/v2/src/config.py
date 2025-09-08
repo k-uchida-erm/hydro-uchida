@@ -42,5 +42,5 @@ LOSS_WEIGHTS = {
     'obs': 10.0    # 観測データの重みを上げる
 }
 
-# データディレクトリ
-DATA_DIR = Path(__file__).parent.parent / "data"
+# データディレクトリ（共通data/v2）
+DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "v2"
